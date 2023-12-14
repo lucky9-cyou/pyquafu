@@ -9,8 +9,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CUDA_ARCHITECTURES 70;75;80;90)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(SKBUILD)
 
 execute_process(
@@ -74,7 +75,7 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_HOST_SYSTEM_PROCESSOR 
 	endif()
 endif()
 
-list (APPEND PRJ_INCLUDE_DIRS src/qfvm)
+list (APPEND PRJ_INCLUDE_DIRS src/qfvm src/qfvm_clifford)
 pybind11_add_module(${PROJECT_NAME} MODULE src/${PROJECT_NAME}/${PROJECT_NAME}.cpp)
 add_dependencies(${PROJECT_NAME} Eigen3) #must add dependence for ninja
 target_compile_options(${PROJECT_NAME} PUBLIC ${PRJ_COMPILE_OPTIONS})

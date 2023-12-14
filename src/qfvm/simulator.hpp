@@ -2,6 +2,8 @@
 
 #include "statevector.hpp"
 #include "circuit.hpp"
+#include "clifford_simulator.h"
+#include <cstddef>
 
 void apply_op(QuantumOperator &op, StateVector<data_t> &state){
     bool matched = false; 
@@ -114,3 +116,9 @@ void simulate(Circuit const& circuit, StateVector<data_t> & state){
     }
 }
 
+template <size_t word_size>
+void apply_op(QuantumOperator &op, circuit_simulator<word_size>& cs) {
+    bool matched = false; 
+    // TODO: support args
+    cs.do_circuit_instruction(op.name(), op.positions());
+}
