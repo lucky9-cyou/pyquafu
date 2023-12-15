@@ -85,6 +85,18 @@ COLLAPSING_GATE(m, {
 
 // Z-basis measurement. Projects each target qubit into |0> or |1> and reports
 // its value (false=|0>, true=|1>).
+COLLAPSING_GATE(measure, {
+  if (!t.is_deterministic_z(qubit)) {
+
+    tableau_trans<word_size> t_trans(t);
+    t.collapse_qubit_along_z(t_trans, qubit, rng);
+  }
+
+  return t.stabilizer.signs[qubit];
+})
+
+// Z-basis measurement. Projects each target qubit into |0> or |1> and reports
+// its value (false=|0>, true=|1>).
 COLLAPSING_GATE(mz, {
   if (!t.is_deterministic_z(qubit)) {
 

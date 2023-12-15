@@ -6,8 +6,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <emmintrin.h>
-#include <immintrin.h>
+
+#ifdef USE_SIMD
+#ifdef _MSC_VER
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
+#endif
+
 #include <iostream>
 #include <sstream>
 
@@ -312,171 +319,7 @@ template <> struct bit_word<64> {
   }
 };
 
-/* =================================================== */
-/* ================ 128 bit version ================== */
-template <> struct bit_word<128> {
-  const static size_t WORD_SIZE = 128;
-  const static size_t BIT_POW = 7;
-
-  union {
-    uint8_t u8[16];
-    uint64_t u64[2];
-    __m128i m128;
-  };
-
-  inline constexpr bit_word<128>() : m128(__m128i{}) {}
-  inline constexpr bit_word<128>(__m128i v) : m128(v) {}
-  inline bit_word<128>(uint64_t v) : m128{_mm_set_epi64x(0, v)} {}
-  inline bit_word<128>(int64_t v) : m128{_mm_set_epi64x(-(v < 0), v)} {}
-  inline bit_word<128>(int v) : m128{_mm_set_epi64x(-(v < 0), v)} {}
-
-  inline operator bool() const { return bool(u64[0] | u64[1]); }
-  inline operator int64_t() const {
-    auto words = to_u64_array();
-    // x86 is little endian default
-    int64_t result = int64_t(words[0]);
-    uint64_t expected = result < 0 ? uint64_t(-1) : uint64_t(0);
-    if (words[1] != expected) {
-      throw std::runtime_error("int64_t overflow");
-    }
-    return result;
-  }
-  inline operator int() const { return int64_t(*this); }
-  inline operator uint64_t() const {
-    if (u64[1]) {
-      throw std::runtime_error("uint64_t overflow");
-    }
-    return u64[0];
-  }
-
-  inline bit_word<128>& operator^=(const bit_word<128>& other) {
-    m128 = _mm_xor_si128(m128, other.m128);
-    return *this;
-  }
-
-  inline bit_word<128>& operator&=(const bit_word<128>& other) {
-    m128 = _mm_and_si128(m128, other.m128);
-    return *this;
-  }
-
-  inline bit_word<128>& operator|=(const bit_word<128>& other) {
-    m128 = _mm_or_si128(m128, other.m128);
-    return *this;
-  }
-
-  inline bit_word<128> operator^(const bit_word<128>& other) const {
-    return bit_word<128>(_mm_xor_si128(m128, other.m128));
-  }
-
-  inline bit_word<128> operator&(const bit_word<128>& other) const {
-    return bit_word<128>(_mm_and_si128(m128, other.m128));
-  }
-
-  inline bit_word<128> operator|(const bit_word<128>& other) const {
-    return bit_word<128>(_mm_or_si128(m128, other.m128));
-  }
-
-  inline bit_word<128> andnot(const bit_word<128>& other) const {
-    return bit_word<128>(_mm_andnot_si128(m128, other.m128));
-  }
-
-  // convert bit word to string
-  operator std::string() const {
-    std::stringstream ss;
-    ss << *this;
-    return ss.str();
-  }
-
-  std::array<uint64_t, 2> to_u64_array() const {
-    return std::array<uint64_t, 2>{u64[0], u64[1]};
-  }
-
-  inline bit_word<128> shift(int offset) const {
-    auto array = to_u64_array();
-    while (offset <= -64) {
-      array[0] = array[1];
-      array[1] = 0;
-      offset += 64;
-    }
-
-    while (offset >= 64) {
-      array[1] = array[0];
-      array[0] = 0;
-      offset -= 64;
-    }
-
-    __m128i low2high;
-    __m128i high2low;
-    if (offset < 0) {
-      low2high = _mm_set_epi64x(0, array[1]);
-      high2low = _mm_set_epi64x(array[1], array[0]);
-      offset += 64;
-    } else {
-      low2high = _mm_set_epi64x(array[1], array[0]);
-      high2low = _mm_set_epi64x(array[0], 0);
-    }
-    uint64_t mask = (uint64_t{1} << offset) - 1;
-    low2high = _mm_slli_epi64(low2high, offset);
-    high2low = _mm_srli_epi64(high2low, 64 - offset);
-    // for offset < 0, only w[1] in lower 64 bits is used
-    low2high = _mm_and_si128(low2high, _mm_set1_epi64x(~mask));
-    // for offset > 0, only w[0] in upper 64 bits is used
-    high2low = _mm_and_si128(high2low, _mm_set1_epi64x(mask));
-    return _mm_or_si128(low2high, high2low);
-  }
-
-  inline uint16_t count() const {
-    return count_uint64_bits(u64[0]) + count_uint64_bits(u64[1]);
-  }
-
-  static void* aligned_malloc(size_t byte) { return aligned_alloc(128, byte); }
-
-  static void aligned_free(void* ptr) { free(ptr); }
-
-  template <uint64_t shift>
-  static void inplace_transpose_128_step(__m128i mask, __m128i* data,
-                                         size_t stride) {
-    for (std::size_t k = 0; k < 128; k++) {
-      if (k & shift)
-        continue;
-
-      __m128i& x = data[stride * k];
-      __m128i& y = data[stride * (k + shift)];
-      __m128i a = _mm_and_si128(x, mask);
-      __m128i b = _mm_andnot_si128(mask, x);
-      __m128i c = _mm_and_si128(y, mask);
-      __m128i d = _mm_andnot_si128(mask, y);
-
-      x = _mm_or_si128(a, _mm_slli_epi64(c, shift));
-      y = _mm_or_si128(_mm_srli_epi64(b, shift), d);
-    }
-  }
-
-  static void inplace_transpose_64_step(bit_word<128>* data, size_t stride) {
-    uint64_t* u64_ptr = (uint64_t*)data;
-    stride <<= 1;
-    for (std::size_t k = 0; k < 64; k++)
-      std::swap(u64_ptr[stride * k + 1], u64_ptr[stride * (k + 64)]);
-  }
-
-  static void inplace_transpose_square(bit_word<128>* block_start,
-                                       size_t stride) {
-    inplace_transpose_128_step<1>(_mm_set1_epi8(0x55), (__m128i*)block_start,
-                                  stride);
-    inplace_transpose_128_step<2>(_mm_set1_epi8(0x33), (__m128i*)block_start,
-                                  stride);
-    inplace_transpose_128_step<4>(_mm_set1_epi8(0x0F), (__m128i*)block_start,
-                                  stride);
-    inplace_transpose_128_step<8>(_mm_set1_epi16(0x00FF), (__m128i*)block_start,
-                                  stride);
-    inplace_transpose_128_step<16>(_mm_set1_epi32(0x0000FFFF),
-                                   (__m128i*)block_start, stride);
-    inplace_transpose_128_step<32>(_mm_set1_epi64x(0x00000000FFFFFFFFull),
-                                   (__m128i*)block_start, stride);
-    inplace_transpose_64_step(block_start, stride);
-  }
-};
-
+#ifdef USE_SIMD
 /* =================================================== */
 /* ================ 256 bit version ================== */
 template <> struct bit_word<256> {
@@ -662,5 +505,6 @@ template <> struct bit_word<256> {
                                    (__m256i*)data, stride);
   }
 };
+#endif
 
 #endif

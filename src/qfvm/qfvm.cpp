@@ -1,14 +1,26 @@
+#include <algorithm>
+#include <cstddef>
+#include <map>
+#include <pybind11/cast.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "simulator.hpp"
 #include <iostream>
 #include <random>
+#include <tuple>
+
 #ifdef _USE_GPU
 #include <cuda_simulator.cuh>
 #endif
 
 #ifdef _USE_CUQUANTUM
 #include <custate_simu.cuh>
+#endif
+
+#ifdef USE_SIMD
+constexpr size_t _word_size = 256;
+#else
+constexpr size_t _word_size = 64;
 #endif
 
 namespace py = pybind11;
@@ -103,6 +115,63 @@ std::pair<std::map<uint, uint>, py::array_t<complex<double>> > simulate_circuit(
     else return std::make_pair(outcount, np_inputstate);  
 }
 
+template <size_t word_size>
+std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit, const int& shots) {
+
+    auto circuit = Circuit(pycircuit);
+    auto global_cs = circuit_simulator<word_size>(circuit.qubit_num());
+
+    // If measure all at the end, simulate once
+    uint actual_shots = shots;
+    if (circuit.final_measure()) 
+        actual_shots = 1;
+    
+    // qbit, cbit
+    vector<std::pair<uint, uint>> measures = circuit.measure_vec();
+    std::map<uint, bool> cbit_measured;
+    for(auto &pair: measures) {
+        cbit_measured[pair.second] = true;        
+    }
+
+    // Store outcome's count
+    std::map<uint, uint> outcount;
+
+    for(uint i =0; i < actual_shots; i++) {
+
+        circuit_simulator<word_size> cs(circuit.qubit_num());
+        simulate(circuit, cs);
+
+        if (!circuit.final_measure()) {
+            // qubit, cbit, measure result
+            auto measure_results = cs.current_measurement_record();
+
+            // make sure the order is the same with other simulators
+            std::sort(measure_results.begin(), measure_results.end(), 
+                [](auto& a, auto& b) { return std::get<1>(a) < std::get<1>(b); });
+
+            uint outcome = 0;
+            for (auto& measure_result: measure_results) {
+                outcome *= 2;
+                outcome += std::get<2>(measure_result);
+            }
+
+            if (outcount.find(outcome) != outcount.end()) 
+                outcount[outcome]++;
+            else 
+                outcount[outcome] = 1;
+        }
+
+        if (circuit.final_measure() || i == actual_shots - 1) 
+            global_cs = std::move(cs);
+    }
+
+    if (circuit.final_measure()) {
+        throw std::runtime_error("Not implemented");
+    }
+
+    return outcount;
+}
+
 #ifdef _USE_GPU
 py::object simulate_circuit_gpu(py::object const&pycircuit, py::array_t<complex<double>> &np_inputstate){
     auto circuit = Circuit(pycircuit);
@@ -152,6 +221,7 @@ py::object simulate_circuit_custate(py::object const&pycircuit, py::array_t<comp
 PYBIND11_MODULE(qfvm, m) {
     m.doc() = "Qfvm simulator";
     m.def("simulate_circuit", &simulate_circuit, "Simulate with circuit", py::arg("circuit"), py::arg("inputstate")= py::array_t<complex<double>>(0), py::arg("shots"));
+    m.def("simulate_circuit", &simulate_circuit_clifford<_word_size>, "Simulate with circuit using clifford", py::arg("circuit"), py::arg("shots"));
 
     #ifdef _USE_GPU
      m.def("simulate_circuit_gpu", &simulate_circuit_gpu, "Simulate with circuit", py::arg("circuit"), py::arg("inputstate")= py::array_t<complex<double>>(0));

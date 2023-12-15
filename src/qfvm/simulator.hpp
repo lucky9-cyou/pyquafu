@@ -1,9 +1,12 @@
 #pragma once
 
+#include "qasm.hpp"
 #include "statevector.hpp"
 #include "circuit.hpp"
 #include "clifford_simulator.h"
+#include "types.hpp"
 #include <cstddef>
+#include <vector>
 
 void apply_op(QuantumOperator &op, StateVector<data_t> &state){
     bool matched = false; 
@@ -117,8 +120,37 @@ void simulate(Circuit const& circuit, StateVector<data_t> & state){
 }
 
 template <size_t word_size>
+void apply_measure(circuit_simulator<word_size>& cs, const vector<pos_t>& qbits, const vector<pos_t>& cbits) {
+    for (size_t i = 0; i < qbits.size(); i++) {
+        cs.do_circuit_instruction("measure", {qbits[i]}, {cbits[i]});
+    }
+}
+
+
+template <size_t word_size>
 void apply_op(QuantumOperator &op, circuit_simulator<word_size>& cs) {
-    bool matched = false; 
     // TODO: support args
-    cs.do_circuit_instruction(op.name(), op.positions());
+    switch (OPMAP[op.name()]) {
+        case Opname::measure:
+            apply_measure(cs, op.qbits(), op.cbits());
+            break;
+        case Opname::reset:
+            for (auto qubit : op.qbits()) {
+                cs.do_circuit_instruction("reset", {qubit});
+            }
+            break;
+        default:
+            cs.do_circuit_instruction(op.name(), op.positions());
+    }
+}
+
+
+template <size_t word_size>
+void simulate(Circuit const& circuit, circuit_simulator<word_size>& cs) {
+    // skip measure and handle it in qfvm.cpp 
+    bool skip_measure = circuit.final_measure();
+    for (auto op : circuit.instructions()){
+        if(skip_measure == true && op.name() == "measure") continue;
+        apply_op(op, cs);
+    }
 }

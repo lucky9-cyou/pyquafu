@@ -8,14 +8,16 @@
 #include <cstddef>
 #include <ios>
 #include <ostream>
+#include <tuple>
 
 // strore measurement result
 struct measurement_record {
-  std::vector<bool> storage;
+  using result = std::tuple<size_t, size_t, bool>;
+  std::vector<result> storage;
 
-  void record(bool result) { storage.push_back(result); }
-  bool operator[](size_t index) { return storage[index]; }
-  bool const operator[](size_t index) const { return storage[index]; }
+  void record(size_t qubit, size_t cbit, bool result) { storage.push_back({qubit, cbit, result}); }
+  auto operator[](size_t index) { return storage[index]; }
+  auto const operator[](size_t index) const { return storage[index]; }
   auto begin() { return storage.begin(); }
   auto end() { return storage.end(); }
   auto begin() const { return storage.begin(); }
@@ -23,12 +25,6 @@ struct measurement_record {
   auto cbegin() const { return storage.cbegin(); }
   auto cend() const { return storage.cend(); }
   auto size() const { return storage.size(); }
-
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const measurement_record& mr) {
-    os << std::boolalpha << "[" << seperate(mr) << "]" << std::noboolalpha;
-    return os;
-  }
 };
 
 // quantum circuit simulator, include original tableau, measurement record and a
@@ -123,7 +119,7 @@ template <size_t word_size> struct circuit_simulator {
     } else if (COLLAPSING_GATE == pair.first) {
       auto record = unpack_vector<1>(pair.second, sim_tableau, ci.targets, rng);
       if (record.has_value())
-        sim_record.record(record.value());
+        sim_record.record(ci.targets[0], ci.args[0], record.value());
     } else if (ERROR_QUBIT_GATE == pair.first) {
       std::bernoulli_distribution d(ci.args[0]);
       if (d(rng))
