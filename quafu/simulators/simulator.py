@@ -30,6 +30,7 @@ def simulate(
     shots: int = 100,
     use_gpu: bool = False,
     use_custatevec: bool = False,
+    use_clifford: bool = False,
 ) -> SimuResult:
     """Simulate quantum circuit
     Args:
@@ -83,6 +84,16 @@ def simulate(
         if use_gpu:
             if qc.executable_on_backend == False:
                 raise QuafuError("classical operation only support for `qfvm_qasm`")
+            
+            if use_clifford:
+                try:
+                    from .qfvm import simulate_circuit_clifford
+                except ImportError:
+                    raise QuafuError("you are not using the GPU version of pyquafu")
+                
+                # Not currently supported to convert psi into Clifford tableau, nor is reverse conversion supported.
+                count_dict = simulate_circuit_clifford(qc, shots)
+            
             if use_custatevec:
                 try:
                     from .qfvm import simulate_circuit_custate
