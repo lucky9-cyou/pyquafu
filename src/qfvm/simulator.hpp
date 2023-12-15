@@ -122,7 +122,7 @@ void simulate(Circuit const& circuit, StateVector<data_t> & state){
 template <size_t word_size>
 void apply_measure(circuit_simulator<word_size>& cs, const vector<pos_t>& qbits, const vector<pos_t>& cbits) {
     for (size_t i = 0; i < qbits.size(); i++) {
-        cs.do_circuit_instruction("measure", {qbits[i]}, {cbits[i]});
+        cs.do_circuit_instruction({"measure", std::vector<size_t>{qbits[i]}, std::vector<double>{static_cast<double>(cbits[i])}});
     }
 }
 
@@ -136,11 +136,11 @@ void apply_op(QuantumOperator &op, circuit_simulator<word_size>& cs) {
             break;
         case Opname::reset:
             for (auto qubit : op.qbits()) {
-                cs.do_circuit_instruction("reset", {qubit});
+                cs.do_circuit_instruction({"reset", std::vector<size_t>{static_cast<size_t>(qubit)}});
             }
             break;
         default:
-            cs.do_circuit_instruction(op.name(), op.positions());
+            cs.do_circuit_instruction({op.name(), std::vector<size_t>(op.positions().begin(), op.positions().end())});
     }
 }
 

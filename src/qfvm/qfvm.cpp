@@ -221,7 +221,7 @@ py::object simulate_circuit_custate(py::object const&pycircuit, py::array_t<comp
 PYBIND11_MODULE(qfvm, m) {
     m.doc() = "Qfvm simulator";
     m.def("simulate_circuit", &simulate_circuit, "Simulate with circuit", py::arg("circuit"), py::arg("inputstate")= py::array_t<complex<double>>(0), py::arg("shots"));
-    m.def("simulate_circuit", &simulate_circuit_clifford<_word_size>, "Simulate with circuit using clifford", py::arg("circuit"), py::arg("shots"));
+    m.def("simulate_circuit_clifford", &simulate_circuit_clifford<_word_size>, "Simulate with circuit using clifford", py::arg("circuit"), py::arg("shots"));
 
     #ifdef _USE_GPU
      m.def("simulate_circuit_gpu", &simulate_circuit_gpu, "Simulate with circuit", py::arg("circuit"), py::arg("inputstate")= py::array_t<complex<double>>(0));
