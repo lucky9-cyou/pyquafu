@@ -172,7 +172,8 @@ COLLAPSING_GATE(reset, {
 })
 
 // // Z-basis reset. Forces each target qubit into the |0> state by silently
-// // measuring it in the Z basis and applying an X gate if it ended up in the |1>
+// // measuring it in the Z basis and applying an X gate if it ended up in the
+// |1>
 // // state.
 // COLLAPSING_GATE(rz, {
 //   // Collapse the qubits to be reset.
@@ -190,7 +191,8 @@ COLLAPSING_GATE(reset, {
 // })
 
 // // X-basis reset. Forces each target qubit into the |+> state by silently
-// // measuring it in the X basis and applying a Z gate if it ended up in the |->
+// // measuring it in the X basis and applying a Z gate if it ended up in the
+// |->
 // // state.
 // COLLAPSING_GATE(rx, {
 //   // Collapse the qubits to be reset.
@@ -210,7 +212,8 @@ COLLAPSING_GATE(reset, {
 // })
 
 // // Y-basis reset. Forces each target qubit into the |i> state by silently
-// // measuring it in the Y basis and applying an X gate if it ended up in the |-i>
+// // measuring it in the Y basis and applying an X gate if it ended up in the
+// |-i>
 // // state.
 // COLLAPSING_GATE(ry, {
 //   // Collapse the qubits to be reset.

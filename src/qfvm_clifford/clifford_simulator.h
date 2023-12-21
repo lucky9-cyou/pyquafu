@@ -15,7 +15,9 @@ struct measurement_record {
   using result = std::tuple<size_t, size_t, bool>;
   std::vector<result> storage;
 
-  void record(size_t qubit, size_t cbit, bool result) { storage.push_back({qubit, cbit, result}); }
+  void record(size_t qubit, size_t cbit, bool result) {
+    storage.push_back({qubit, cbit, result});
+  }
   auto operator[](size_t index) { return storage[index]; }
   auto const operator[](size_t index) const { return storage[index]; }
   auto begin() { return storage.begin(); }
@@ -120,7 +122,8 @@ template <size_t word_size> struct circuit_simulator {
     } else if (COLLAPSING_GATE == pair.first) {
       auto record = unpack_vector<1>(pair.second, sim_tableau, ci.targets, rng);
       if (record.has_value())
-        sim_record.record(ci.targets[0], static_cast<size_t>(ci.args[0]), record.value());
+        sim_record.record(ci.targets[0], static_cast<size_t>(ci.args[0]),
+                          record.value());
     } else if (ERROR_QUBIT_GATE == pair.first) {
       std::bernoulli_distribution d(ci.args[0]);
       if (d(rng))
