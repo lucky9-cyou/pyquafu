@@ -88,15 +88,6 @@ def simulate(
             if qc.executable_on_backend == False:
                 raise QuafuError("classical operation only support for `qfvm_qasm`")
 
-            if use_clifford:
-                try:
-                    from .qfvm import simulate_circuit_clifford
-                except ImportError:
-                    raise QuafuError("you are not using the GPU version of pyquafu")
-
-                # Not currently supported to convert psi into Clifford tableau, nor is reverse conversion supported.
-                count_dict = simulate_circuit_clifford(qc, shots)
-
             if use_custatevec:
                 try:
                     from .qfvm import simulate_circuit_custate
@@ -111,6 +102,14 @@ def simulate(
                 psi = simulate_circuit_gpu(qc, psi)
         else:
             count_dict, psi = simulate_circuit(qc, psi, shots)
+
+    elif simulator == "qfvm_clifford":
+        try:
+            from .qfvm import simulate_circuit_clifford
+        except ImportError:
+            raise QuafuError("you are not using the clifford version of pyquafu")
+
+        count_dict = simulate_circuit_clifford(qc, shots)
 
     elif simulator == "py_simu":
         if qc.executable_on_backend == False:
@@ -139,6 +138,9 @@ def simulate(
 
     elif output == "state_vector":
         return SimuResult(psi, output, count_dict)
+
+    elif output == "count_dict":
+        return SimuResult(None, output, count_dict)
 
     else:
         raise ValueError(

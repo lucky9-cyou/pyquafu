@@ -283,7 +283,7 @@ template <> struct bit_word<64> {
   inline uint16_t count() const { return count_uint64_bits(u64[0]); }
 
   static void* aligned_malloc(size_t byte) {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
     return aligned_alloc(64, byte);
 #else
     return _aligned_malloc(byte, 64);
@@ -291,7 +291,7 @@ template <> struct bit_word<64> {
   }
 
   static void aligned_free(void* ptr) {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
     aligned_free(ptr);
 #else
     _aligned_free(ptr);
@@ -460,7 +460,7 @@ template <> struct bit_word<256> {
   }
 
   static void* aligned_malloc(size_t byte) {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
     return aligned_alloc(256, byte);
 #else
     return _aligned_malloc(byte, 256);
@@ -468,7 +468,7 @@ template <> struct bit_word<256> {
   }
 
   static void aligned_free(void* ptr) {
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
     aligned_free(ptr);
 #else
     _aligned_free(ptr);
