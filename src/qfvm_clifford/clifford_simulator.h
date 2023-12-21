@@ -100,7 +100,7 @@ template <size_t word_size> struct circuit_simulator {
       } else if (COLLAPSING_GATE == pair.first) {
         auto record =
             unpack_vector<1>(pair.second, sim_tableau, ci.targets, rng);
-        if (record.has_value())
+        if (auto* p = std::get_if<result>(&record))
           sim_record.record(record.value());
       } else if (ERROR_QUBIT_GATE == pair.first) {
         std::bernoulli_distribution d(ci.args[0]);
