@@ -119,12 +119,9 @@ template <size_t word_size>
 std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit, const int& shots) {
 
     auto circuit = Circuit(pycircuit);
-    auto global_cs = circuit_simulator<word_size>(circuit.qubit_num());
 
     // If measure all at the end, simulate once
     uint actual_shots = shots;
-    if (circuit.final_measure()) 
-        actual_shots = 1;
     
     // qbit, cbit
     vector<std::pair<uint, uint>> measures = circuit.measure_vec();
@@ -136,10 +133,11 @@ std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit, cons
     // Store outcome's count
     std::map<uint, uint> outcount;
 
-    for(uint i =0; i < actual_shots; i++) {
+    circuit_simulator<word_size> cs(circuit.qubit_num());
 
-        circuit_simulator<word_size> cs(circuit.qubit_num());
+    for(uint i =0; i < actual_shots; i++) {
         simulate(circuit, cs);
+        uint outcome = 0;
 
         if (!circuit.final_measure()) {
             // qubit, cbit, measure result
@@ -149,24 +147,34 @@ std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit, cons
             std::sort(measure_results.begin(), measure_results.end(), 
                 [](auto& a, auto& b) { return std::get<1>(a) < std::get<1>(b); });
 
-            uint outcome = 0;
             for (auto& measure_result: measure_results) {
                 outcome *= 2;
                 outcome += std::get<2>(measure_result);
             }
 
-            if (outcount.find(outcome) != outcount.end()) 
-                outcount[outcome]++;
-            else 
-                outcount[outcome] = 1;
+        } else if (circuit.final_measure() && !measures.empty()) {
+            for (auto& measure: measures) {
+                cs.do_circuit_instruction({"measure", std::vector<size_t>{measures[i].first}, std::vector<double>{static_cast<double>(measures[i].second)}});
+            }
+
+            // qubit, cbit, measure result
+            auto measure_results = cs.current_measurement_record();
+
+            // make sure the order is the same with other simulators
+            std::sort(measure_results.begin(), measure_results.end(), 
+                [](auto& a, auto& b) { return std::get<1>(a) < std::get<1>(b); });
+
+            for (auto& measure_result: measure_results) {
+                outcome *= 2;
+                outcome += std::get<2>(measure_result);
+            }
         }
 
-        if (circuit.final_measure() || i == actual_shots - 1) 
-            global_cs = std::move(cs);
-    }
+        if(outcount.find(outcome) != outcount.end()) outcount[outcome]++;
+        else outcount[outcome] = 1;
 
-    if (circuit.final_measure()) {
-        throw std::runtime_error("Not implemented");
+        cs.reset_tableau();
+        cs.sim_record.clear();
     }
 
     return outcount;

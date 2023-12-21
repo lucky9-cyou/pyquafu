@@ -25,6 +25,7 @@ struct measurement_record {
   auto cbegin() const { return storage.cbegin(); }
   auto cend() const { return storage.cend(); }
   auto size() const { return storage.size(); }
+  void clear() { storage.clear(); }
 };
 
 // quantum circuit simulator, include original tableau, measurement record and a
@@ -155,6 +156,16 @@ template <size_t word_size> struct circuit_simulator {
 
   // get the measurement record
   auto current_measurement_record() const { return sim_record; }
+
+  auto measure_all() {
+    measurement_record mr;
+    for (size_t i = 0; i < sim_tableau.num_qubits; i++) {
+      auto record = sim_tableau.m_gate(rng, i);
+      if (record.has_value())
+        mr.record(record.value());
+    }
+    return mr;
+  }
 };
 
 #endif
