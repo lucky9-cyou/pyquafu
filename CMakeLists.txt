@@ -57,7 +57,7 @@ ExternalProject_Add(Eigen3
 )
 list (APPEND PRJ_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 
-
+set(pybind11_DIR /home/lucky/anaconda3/envs/tensor/lib/python3.9/site-packages/pybind11/)
 find_package(pybind11 CONFIG)
 list (APPEND PRJ_INCLUDE_DIRS ${PYBIND11_INCLUDE_DIR})
 
