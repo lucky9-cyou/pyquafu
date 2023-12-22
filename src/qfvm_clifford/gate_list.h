@@ -65,6 +65,13 @@ TWO_QUBIT_GATE(cnot, {
   return {};
 })
 
+// control, target
+TWO_QUBIT_GATE(cx, {
+  t.stabilizer[qubit2] *= t.stabilizer[qubit1];
+  t.distabilizer[qubit1] *= t.distabilizer[qubit2];
+  return {};
+})
+
 TWO_QUBIT_GATE(swap, {
   t.stabilizer[qubit1].swap(t.stabilizer[qubit2]);
   t.distabilizer[qubit1].swap(t.distabilizer[qubit2]);

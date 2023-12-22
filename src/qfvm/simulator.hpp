@@ -144,9 +144,9 @@ void apply_op(QuantumOperator& op, circuit_simulator<word_size>& cs) {
     }
     break;
   default:
+    auto qubits = op.positions();
     cs.do_circuit_instruction(
-        {op.name(),
-         std::vector<size_t>(op.positions().begin(), op.positions().end())});
+        {op.name(), std::vector<size_t>(qubits.begin(), qubits.end())});
   }
 }
 

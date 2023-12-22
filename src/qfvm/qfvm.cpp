@@ -123,8 +123,7 @@ simulate_circuit(py::object const& pycircuit,
     return std::make_pair(outcount, np_inputstate);
 }
 
-template <size_t word_size>
-std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit,
+std::map<uint, uint> simulate_circuit_clifford(py::object const& pycircuit,
                                                const int& shots) {
 
   auto circuit = Circuit(pycircuit);
@@ -142,9 +141,10 @@ std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit,
   // Store outcome's count
   std::map<uint, uint> outcount;
 
-  circuit_simulator<word_size> cs(circuit.qubit_num());
+  circuit_simulator<_word_size> cs(circuit.qubit_num());
 
   for (uint i = 0; i < actual_shots; i++) {
+
     simulate(circuit, cs);
     uint outcome = 0;
 
@@ -165,8 +165,8 @@ std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit,
     } else if (circuit.final_measure() && !measures.empty()) {
       for (auto& measure : measures) {
         cs.do_circuit_instruction(
-            {"measure", std::vector<size_t>{measures[i].first},
-             std::vector<double>{static_cast<double>(measures[i].second)}});
+            {"measure", std::vector<size_t>{measure.first},
+             std::vector<double>{static_cast<double>(measure.second)}});
       }
 
       // qubit, cbit, measure result
@@ -181,6 +181,10 @@ std::map<uint, uint> simulate_circuit_clifford(const py::object& pycircuit,
         outcome *= 2;
         outcome += std::get<2>(measure_result);
       }
+    }
+
+    if (measures.empty()) {
+      continue;
     }
 
     if (outcount.find(outcome) != outcount.end())
@@ -244,7 +248,7 @@ PYBIND11_MODULE(qfvm, m) {
         py::arg("circuit"),
         py::arg("inputstate") = py::array_t<complex<double>>(0),
         py::arg("shots"));
-  m.def("simulate_circuit_clifford", &simulate_circuit_clifford<_word_size>,
+  m.def("simulate_circuit_clifford", &simulate_circuit_clifford,
         "Simulate with circuit using clifford", py::arg("circuit"),
         py::arg("shots"));
 

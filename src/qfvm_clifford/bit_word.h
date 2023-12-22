@@ -282,21 +282,9 @@ template <> struct bit_word<64> {
 
   inline uint16_t count() const { return count_uint64_bits(u64[0]); }
 
-  static void* aligned_malloc(size_t byte) {
-#if defined(__linux__) || defined(__APPLE__)
-    return aligned_alloc(64, byte);
-#else
-    return _aligned_malloc(byte, 64);
-#endif
-  }
+  static void* aligned_malloc(size_t bits) { return malloc(bits); }
 
-  static void aligned_free(void* ptr) {
-#if defined(__linux__) || defined(__APPLE__)
-    aligned_free(ptr);
-#else
-    _aligned_free(ptr);
-#endif
-  }
+  static void aligned_free(void* ptr) { free(ptr); }
 
   template <uint64_t mask, uint64_t shift>
   static void inplace_transpose_64_step(uint64_t* data, size_t stride) {
@@ -459,21 +447,11 @@ template <> struct bit_word<256> {
            count_uint64_bits(u64[2]) + count_uint64_bits(u64[3]);
   }
 
-  static void* aligned_malloc(size_t byte) {
-#if defined(__linux__) || defined(__APPLE__)
-    return aligned_alloc(256, byte);
-#else
-    return _aligned_malloc(byte, 256);
-#endif
+  static void* aligned_malloc(size_t bits) {
+    return _mm_malloc(bits, sizeof(__m256i));
   }
 
-  static void aligned_free(void* ptr) {
-#if defined(__linux__) || defined(__APPLE__)
-    aligned_free(ptr);
-#else
-    _aligned_free(ptr);
-#endif
-  }
+  static void aligned_free(void* ptr) { _mm_free(ptr); }
 
   template <uint64_t shift>
   static void inplace_transpose_256_step(__m256i mask, __m256i* data,

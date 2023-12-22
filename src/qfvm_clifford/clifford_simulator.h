@@ -84,7 +84,7 @@ template <size_t word_size> struct circuit_simulator {
   // do a quantum circuit, check the max qubit of the quantum circuit, if it is
   // larger than the number of qubits of the tableau, expand the tableau
   void do_circuit(const quantum_circuit& qc) {
-    if (qc.max_qubit() > sim_tableau.num_qubits) {
+    if (qc.max_qubit() >= sim_tableau.num_qubits) {
       sim_tableau.expand(qc.max_qubit(), 1.0);
       std::cerr << "WARNING: expanding tableau to " << qc.max_qubit()
                 << " qubits\n";
@@ -92,6 +92,10 @@ template <size_t word_size> struct circuit_simulator {
 
     // according quantum circuit instruction type to do the instruction
     qc.for_each_circuit_instruction([&](const circuit_instruction& ci) {
+      if (!gate_map<word_size>.contains(ci.gate + "_gate")) {
+        throw std::runtime_error("unknown gate");
+      }
+
       auto pair = gate_map<word_size>[ci.gate + "_gate"];
       if (SINGLE_QUBIT_GATE == pair.first) {
         unpack_vector<1>(pair.second, sim_tableau, ci.targets);
@@ -101,7 +105,8 @@ template <size_t word_size> struct circuit_simulator {
         auto record =
             unpack_vector<1>(pair.second, sim_tableau, ci.targets, rng);
         if (record.has_value())
-          sim_record.record(record.value());
+          sim_record.record(ci.targets[0], static_cast<size_t>(ci.args[0]),
+                            record.value());
       } else if (ERROR_QUBIT_GATE == pair.first) {
         std::bernoulli_distribution d(ci.args[0]);
         if (d(rng))
@@ -114,7 +119,13 @@ template <size_t word_size> struct circuit_simulator {
 
   // do a quantum circuit instruction
   void do_circuit_instruction(const circuit_instruction& ci) {
+
+    if (!gate_map<word_size>.contains(ci.gate + "_gate")) {
+      throw std::runtime_error("unknown gate");
+    }
+
     auto pair = gate_map<word_size>[ci.gate + "_gate"];
+
     if (SINGLE_QUBIT_GATE == pair.first) {
       unpack_vector<1>(pair.second, sim_tableau, ci.targets);
     } else if (TWO_QUBIT_GATE == pair.first) {

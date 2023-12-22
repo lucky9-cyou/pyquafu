@@ -140,7 +140,7 @@ def simulate(
         return SimuResult(psi, output, count_dict)
 
     elif output == "count_dict":
-        return SimuResult(None, output, count_dict)
+        return SimuResult(max(qc.used_qubits) + 1, output, count_dict)
 
     else:
         raise ValueError(
